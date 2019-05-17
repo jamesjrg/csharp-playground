@@ -11,18 +11,19 @@ namespace Paxos
     public class MessageSender
     {
         readonly HttpClient _client;
-        readonly IList<string> _uris;
 
-        public MessageSender(IList<string> targets)
+        public MessageSender()
         {
             // generally HTTP Clients should be reused via HttpClientFactory, but in this program the messenger
             // instances are only created once, when the program starts, so this is fine
             _client = new HttpClient();
-            _uris = targets.Select(target => $"http://localhost/paxos/{target}").ToList();
+            
         }
         
-        public async Task PostMessage<T>(T message)
+        public async Task PostMessage<T>(IList<string> targets, string messageRoute, T message)
         {
+            var uris = targets.Select(target => $"http://localhost:5001/paxos/{messageRoute}/{target}").ToList();
+            
             StringContent content = null;
             try
             {
@@ -37,7 +38,7 @@ namespace Paxos
                 return;
             }
 
-            foreach (var uri in _uris)
+            foreach (var uri in uris)
             {
                 try
                 {

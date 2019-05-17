@@ -5,5 +5,6 @@ namespace Paxos.Messages
         public string Type { get { return "prepare"; } }
         public int TimePeriod { get; set; }
         public string Value { get; set; }
+        public string ProposerName { get; set; }
     }
 }

@@ -25,7 +25,7 @@ namespace Paxos
 
         public async Task Run()
         {
-            var messenger = new MessageSender(_acceptorNames);
+            var messenger = new MessageSender();
             var received = new Dictionary<int, List<Promised>>();
             var latestProposedTimePeriod = 0;
 
@@ -58,7 +58,7 @@ namespace Paxos
                     _ => _valueProposer(),
                     };
 
-                await messenger.PostMessage(new Proposed
+                await messenger.PostMessage(_acceptorNames, "proposed", new Proposed
                 {
                     TimePeriod = message.TimePeriod,
                     Value = proposedValue,

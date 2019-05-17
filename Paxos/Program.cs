@@ -26,6 +26,17 @@ namespace Paxos
     
     static class Program
     {
+        /*
+         * If each type of background task had only a single instance then it would make sense to use
+         * background tasks created with IHostedService/BackgroundService in the web host. However, with
+         * multiple copies of each background task it is easier to just use Task.Run
+         */
+        static async Task RunTaskAfterDelay(IBackgroundTask t)
+        {
+            await Task.Delay(500);
+            await t.Run();
+        }
+        
         public static void Main(string[] args)
         {
             var valueProposer = new Func<string>(() => new Random().Next(2).ToString());
@@ -36,31 +47,31 @@ namespace Paxos
             var learnerNames = new[] {"learner1"}.ToList();
             var acceptorNames = Enumerable.Range(0, 3).Select(i => $"acceptor{i}").ToList();
 
-            /*
-             * Due to the slightly strange way this means there are several identical copies of exactly the same service need to run at the same time I'm using Task.Run instead of adding background tasks to the web host by implementing IHostedService or BackgroundService.     
-             */
             foreach (var name in proposerNames)
             {
                 var queue = new ConcurrentQueue<Promised>();
                 queues.ProposerQueues[name] = queue;
-                Task.Run(() => new Proposer(name, acceptorNames, queue, valueProposer).Run());
+                // ReSharper disable once ImplicitlyCapturedClosure
+                Task.Run(() => RunTaskAfterDelay(new Proposer(name, acceptorNames, queue, valueProposer)));
             }
             
             foreach (var name in learnerNames)
             {
                 var queue = new ConcurrentQueue<Accepted>();
                 queues.LearnerQueues[name] = queue;
-                Task.Run(() => new Learner(name, queue).Run());
+                Task.Run(() => RunTaskAfterDelay(new Learner(name, queue)));
             }
             
             foreach (var name in acceptorNames)
             {
                 var queue = new ConcurrentQueue<AcceptorReceived>();
                 queues.AcceptorQueues[name] = queue;
-                Task.Run(() => new Acceptor(name, proposerNames, learnerNames, queue).Run());
+                // ReSharper disable once ImplicitlyCapturedClosure
+                Task.Run(() => RunTaskAfterDelay(new Acceptor(name, learnerNames, queue)));
             }
             
-            Task.Run(() => Nag.Run(acceptorNames));
+            // ReSharper disable once ImplicitlyCapturedClosure
+            Task.Run(() => RunTaskAfterDelay(new Nag(proposerNames, acceptorNames)));
             
             CreateHostBuilder(args, queues).Build().Run();
         }
@@ -73,7 +84,9 @@ namespace Paxos
                 })
                 .ConfigureWebHostDefaults(webBuilder =>
                 {
-                    webBuilder.UseStartup<Startup>();
+                    webBuilder
+                        .UseStartup<Startup>()
+                        .UseUrls("http://localhost:5001/");
                 });
     }
 }

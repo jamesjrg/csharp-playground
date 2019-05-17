@@ -1,45 +1,43 @@
 using System;
 using System.Collections.Generic;
-using System.Threading;
 using System.Threading.Tasks;
 using Paxos.Messages;
 
 namespace Paxos
 {
-    internal static class Nag
+    internal class Nag: IBackgroundTask
     {
+        readonly List<string> _proposerNames;
+        readonly List<string> _acceptorNames;
+        int _proposerIndex = 0;
         const int LoopDelaySeconds = 5;
         
-        public static async Task Run(List<string> targets)
+
+        public Nag(List<string> proposerNames, List<string> acceptorNames)
         {
-            var messenger = new MessageSender(targets);
+            _proposerNames = proposerNames;
+            _acceptorNames = acceptorNames;
+        }
+        
+        public async Task Run()
+        {
+            var messenger = new MessageSender();
             
             while (true)
             {
                 var time = (DateTime.UtcNow - DateTime.UnixEpoch).TotalSeconds;
-                await messenger.PostMessage(new Prepare
+
+                if (_proposerNames.Count == 0)
+                    continue;
+                _proposerIndex = (_proposerIndex + 1) % _proposerNames.Count;
+                
+                await messenger.PostMessage(_acceptorNames, "prepare", new Prepare
                 {
                     TimePeriod = (int)time,
+                    ProposerName = _proposerNames[_proposerIndex]
                 });
                 await Task.Delay(LoopDelaySeconds * 1000);
             }
-            
-            /*
-            Config{
-                ..
-            } <-atomically $ checking(( > 0). cNagPeriodSec) $ readTVar configVar
-            threadDelay $ cNagPeriodSec * 1000000
-
-            now < -getCurrentTime
-            let timePeriod = floor $ diffUTCTime now unixEpoch
-                value = Prepare Nothing $ SimpleTimePeriod timePeriod
-            when cShowIncoming $ logMessage now Inbound "/nag" $ formatForLog value
-            atomically $ do
-                let minTimePeriod = timePeriod - 300
-            modifyTVar minTimePeriodVar $ max minTimePeriod
-            modifyTVar proposersByTimePeriodVar $ snd.M.split minTimePeriod
-            writeTQueue incomingQueue("/nag", now, value)
-            */
         }
     }
 }

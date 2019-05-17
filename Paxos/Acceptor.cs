@@ -8,14 +8,12 @@ namespace Paxos
     public class Acceptor: IBackgroundTask
     {
         readonly string _name;
-        readonly List<string> _proposerNames;
         readonly List<string> _learnerNames;
         readonly ConcurrentQueue<AcceptorReceived> _queue;
 
-        public Acceptor(string name, List<string> proposerNames, List<string> learnerNames, ConcurrentQueue<AcceptorReceived> queue)
+        public Acceptor(string name, List<string> learnerNames, ConcurrentQueue<AcceptorReceived> queue)
         {
             _name = name;
-            _proposerNames = proposerNames;
             _learnerNames = learnerNames;
             _queue = queue;
         }
@@ -23,8 +21,7 @@ namespace Paxos
 
         public async Task Run()
         {
-            var proposerSender = new MessageSender(_proposerNames);
-            var learnerSender = new MessageSender(_learnerNames);
+            var messageSender = new MessageSender();
             
             var greatestPromisedTimePeriod = -1;
             var lastAcceptedTime = -1;
@@ -40,7 +37,7 @@ namespace Paxos
                         if (message.TimePeriod > greatestPromisedTimePeriod)
                             greatestPromisedTimePeriod = message.TimePeriod;
                         
-                        await proposerSender.PostMessage(new Promised
+                        await messageSender.PostMessage(new[]{message.ProposerName}, "promised", new Promised
                         {
                             By = _name,
                             TimePeriod = message.TimePeriod,
@@ -56,7 +53,7 @@ namespace Paxos
                         lastAcceptedTime = message.TimePeriod;
                         lastAcceptedValue = message.Value;
 
-                        await learnerSender.PostMessage(new Accepted
+                        await messageSender.PostMessage(_learnerNames, "accepted", new Accepted
                         {
                             By = _name,
                             TimePeriod = message.TimePeriod,

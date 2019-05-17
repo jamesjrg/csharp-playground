@@ -18,19 +18,28 @@ namespace Paxos
             _queues = queues;
         }
         
-        [HttpPost("accepted/{target:str}")]
+        [HttpPost("prepare/{target}")]
+        public void Post(string target, [FromBody]Prepare message)
+        {
+            _queues.AcceptorQueues[target].Enqueue(message);
+        }
+        
+        [HttpPost("accepted/{target}")]
         public void Post(string target, [FromBody]Accepted message)
         {
+            _queues.LearnerQueues[target].Enqueue(message);
         }
         
-        [HttpPost("promised/{target:str}")]
+        [HttpPost("promised/{target}")]
         public void Post(string target, [FromBody]Promised message)
         {
+            _queues.ProposerQueues[target].Enqueue(message);
         }
         
-        [HttpPost("proposed/{target:str}")]
+        [HttpPost("proposed/{target}")]
         public void Post(string target, [FromBody]Proposed message)
         {
+            _queues.AcceptorQueues[target].Enqueue(message);
         }
     }
 }

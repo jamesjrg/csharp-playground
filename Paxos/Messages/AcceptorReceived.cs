@@ -10,5 +10,6 @@ namespace Paxos.Messages
         public string Type { get; set; }
         public int TimePeriod { get; set; }
         public string Value { get; set; }
+        public string ProposerName { get; set; }
     }
 }
